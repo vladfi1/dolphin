@@ -300,6 +300,8 @@ protected:
   void TransferByte(u8& byte) override;
 
 private:
+  bool m_in_game = false;
+
   SlippiPlayerSelections local_selections;
 
   std::unique_ptr<SlippiUser> user;

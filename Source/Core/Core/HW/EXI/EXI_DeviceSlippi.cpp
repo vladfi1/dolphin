@@ -3099,6 +3099,7 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
     writeToFileAsync(&mem_ptr[0], receive_commands_len + 1, "create");
     buf_loc += receive_commands_len + 1;
     g_need_input_for_frame = true;
+    m_in_game = true;
     SlippiSpectateServer::getInstance().startGame();
     SlippiSpectateServer::getInstance().write(&mem_ptr[0], receive_commands_len + 1);
     slprs_exi_device_reporter_push_replay_data(slprs_exi_device_ptr, &mem_ptr[0],
@@ -3107,6 +3108,14 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 
   if (byte == CMD_MENU_FRAME)
   {
+    // There is a bug where in netplay we don't receive GAME_END commands.
+    // So if we're in a menu, that means the game must have ended.
+    if (m_in_game)
+    {
+      // TODO: write a dummy game end event?
+      SlippiSpectateServer::getInstance().endGame(false);
+      m_in_game = false;
+    }
     SlippiSpectateServer::getInstance().write(&mem_ptr[0], _uSize);
     g_need_input_for_frame = true;
   }
