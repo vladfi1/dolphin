@@ -1,7 +1,7 @@
 #!/bin/bash -e
 # build-appimage.sh
 
-NETPLAY_APPIMAGE_STRING="Slippi_Netplay_Mainline-x86_64.AppImage"
+NETPLAY_APPIMAGE_STRING="Slippi_Netplay_Mainline_NoGui-x86_64.AppImage"
 PLAYBACK_APPIMAGE_STRING="Slippi_Playback_Mainline-x86_64.AppImage"
 
 LINUXDEPLOY_PATH="https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous"
@@ -61,10 +61,9 @@ export QT_SELECT=qt6
 mkdir -p AppDir
 ./Tools/linuxdeploy \
 	--appdir=./AppDir \
-	-e ./build/Binaries/dolphin-emu \
+	-e ./build-headless/Binaries/dolphin-emu \
 	-d ./Data/slippi-dolphin.desktop \
-	-i ./Data/dolphin-emu.png \
-	--plugin qt
+	-i ./Data/dolphin-emu.png
 
 # Add the Sys dir to the AppDir for packaging
 cp -r Data/Sys ${APPDIR_BIN}
@@ -95,6 +94,8 @@ else
 		# Bake an AppImage with the update metadata
 		OUTPUT="${NETPLAY_APPIMAGE_STRING}" \
 		./Tools/linuxdeploy-update-plugin --appdir=./AppDir/
+
+    chmod +x $NETPLAY_APPIMAGE_STRING
 fi
 
 unset NO_STRIP
