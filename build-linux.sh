@@ -1,12 +1,13 @@
 #!/bin/bash -e
 # build-linux.sh
 
-CMAKE_FLAGS='-DLINUX_LOCAL_DEV=true'
+CMAKE_FLAGS='-DLINUX_LOCAL_DEV=true -DENABLE_HEADLESS=true -DENABLE_QT=false'
 
 PLAYBACK_CODES_PATH="./Data/PlaybackGeckoCodes/"
 
 DATA_SYS_PATH="./Data/Sys/"
-BINARY_PATH="./build/Binaries/"
+BUILD_DIR="build-headless"
+BINARY_PATH="./$BUILD_DIR/Binaries/"
 
 # Build type
 if [ "$1" == "playback" ]
@@ -20,17 +21,20 @@ else
 fi
 
 # Move into the build directory, run CMake, and compile the project
-mkdir -p build
-pushd build
+mkdir -p $BUILD_DIR
+pushd $BUILD_DIR
 cmake ${CMAKE_FLAGS} ../
-cmake --build . --target dolphin-emu -- -j$(nproc)
+cmake --build . --target dolphin-nogui -- -j$(nproc)
 popd
+
+# Rename executable for compatibility with the AppImage build script.
+mv $BINARY_PATH/dolphin-emu-nogui $BINARY_PATH/dolphin-emu
 
 # Copy the Sys folder in
 rm -rf ${BINARY_PATH}/Sys
 cp -r ${DATA_SYS_PATH} ${BINARY_PATH}
 
-touch ./build/Binaries/portable.txt
+touch ./$BINARY_PATH/portable.txt
 
 # Copy playback specific codes if needed
 if [ "$1" == "playback" ]
