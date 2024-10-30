@@ -1,8 +1,12 @@
 #!/bin/bash -e
 # build-mac.sh
 
-QT_BREW_PATH=$(brew --prefix qt@6)
-CMAKE_FLAGS="-DQT_DIR=${QT_BREW_PATH}/lib/cmake/Qt6"
+DATA_SYS_PATH="./Data/Sys"
+BUILD_DIR=./build
+BINARY_PATH="${BUILD_DIR}/Binaries"
+SYS_PATH="${BINARY_PATH}/Sys"
+
+CMAKE_FLAGS='-DLINUX_LOCAL_DEV=true -DENABLE_HEADLESS=true'
 
 # For some reason the system xxhash library doesn't get properly linked,
 # at least on my M1. The clang command gets -lxxhash, but probably needs
@@ -27,8 +31,11 @@ then
 fi
 
 # Move into the build directory, run CMake, and compile the project
-mkdir -p build
-pushd build
+mkdir -p $BUILD_DIR
+pushd $BUILD_DIR
 cmake ${CMAKE_FLAGS} ..
-cmake --build . --target dolphin-emu -- -j$(sysctl -n hw.ncpu)
+cmake --build . --target dolphin-nogui -- -j$(sysctl -n hw.ncpu)
 popd
+
+rm -rf ${SYS_PATH}
+cp -r ${DATA_SYS_PATH} ${SYS_PATH}
