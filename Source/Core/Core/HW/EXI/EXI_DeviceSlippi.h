@@ -292,6 +292,7 @@ private:
   std::vector<u8> gecko_list;
 
   u32 stall_frame_counts[SLIPPI_REMOTE_PLAYER_MAX] = {};
+  u64 latest_remote_frame_time_ms[SLIPPI_REMOTE_PLAYER_MAX];
   u64 last_interval_time_us = 0;
   // Leaky accumulator of poor-performance intervals (see handlePoorMatchPerformance)
   s32 perf_debt = 0;
