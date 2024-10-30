@@ -303,6 +303,7 @@ private:
   std::vector<u8> gecko_list;
 
   u32 stall_frame_counts[SLIPPI_REMOTE_PLAYER_MAX] = {};
+  u64 latest_remote_frame_time_ms[SLIPPI_REMOTE_PLAYER_MAX];
 
   std::vector<u8> m_read_queue;
   std::unique_ptr<Slippi::SlippiGame> m_current_game = nullptr;

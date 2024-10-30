@@ -1210,6 +1210,7 @@ void CEXISlippi::handleOnlineInputs(u8* payload)
     for (int i = 0; i < SLIPPI_REMOTE_PLAYER_MAX; i++)
     {
       stall_frame_counts[i] = 0;
+      latest_remote_frame_time_ms[i] = Common::Timer::NowMs();
     }
 
     // Only ranked matches get terminated for poor quality. In other modes players can just manually
@@ -1382,6 +1383,8 @@ CEXISlippi::OnlineFrameSkip CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 fin
     return OnlineFrameSkip::NONE;
   }
 
+  auto now = Common::Timer::NowMs();
+
   // Check each active remote player individually. If any single player is short on
   // new inputs we still skip the frame, but we only force-disconnect the specific
   // player(s) whose stall counter exceeds the threshold. In a 1v1 this collapses to
@@ -1408,13 +1411,17 @@ CEXISlippi::OnlineFrameSkip CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 fin
     if (has_enough_new_inputs)
     {
       stall_frame_counts[i] = 0;
+      latest_remote_frame_time_ms[i] = now;
       continue;
     }
 
     stall_frame_counts[i]++;
     any_player_needs_inputs = true;
 
-    if (stall_frame_counts[i] > 60 * 7)
+    // If we're running faster than realtime, the stall_frame_count won't be
+    // accurate, so use the actual time instead.
+
+    if (now - latest_remote_frame_time_ms[i] > 7 * 1000)
     {
       WARN_LOG_FMT(SLIPPI_ONLINE,
                    "Force-disconnecting player {} after 7s stall (frame: {} | latest: {})",
