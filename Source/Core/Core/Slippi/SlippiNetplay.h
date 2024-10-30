@@ -186,7 +186,7 @@ public:
   std::unique_ptr<SlippiRemotePadOutput> GetSlippiRemotePad(int index, int max_frame_count);
   void DropOldRemoteInputs(int32_t finalized_frame);
   SlippiMatchInfo* GetMatchInfo();
-  int32_t GetSlippiLatestRemoteFrame(int max_frame_count);
+  int32_t GetSlippiLatestRemoteFrame();
   SlippiPlayerSelections GetSlippiRemoteChatMessage(bool is_chat_enabled);
   u8 GetSlippiRemoteSentChatMessage(bool is_chat_enabled);
   s32 CalcTimeOffsetUs();

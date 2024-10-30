@@ -1343,9 +1343,8 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
   // is 101, we can't let frame 109 be created. 101 - 100 >= 109 - 100 - 7 : 1 >= 2 (false).
   // It has to work this way because we only have room to move our states forward by one for frame
   // 108
-  s32 latest_remote_frame = slippi_netplay->GetSlippiLatestRemoteFrame(ROLLBACK_MAX_FRAMES);
-  auto has_enough_new_inputs =
-      latest_remote_frame - finalized_frame >= (frame - finalized_frame - ROLLBACK_MAX_FRAMES);
+  s32 latest_remote_frame = slippi_netplay->GetSlippiLatestRemoteFrame();
+  auto has_enough_new_inputs = latest_remote_frame >= frame;
   if (!has_enough_new_inputs)
   {
     stall_frame_count++;
