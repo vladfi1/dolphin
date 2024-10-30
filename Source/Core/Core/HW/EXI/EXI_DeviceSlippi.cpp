@@ -1372,16 +1372,16 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
   u8 remote_player_count = matchmaking->RemotePlayerCount();
   for (u8 i = 0; i < remote_player_count; i++)
   {
-    auto pad = slippi_netplay->GetSlippiRemotePad(i, ROLLBACK_MAX_FRAMES);
-    if (pad->is_disconnected)
+    auto player_info = slippi_netplay->GetRemotePlayerInfo(i);
+
+    if (!player_info.is_connected)
     {
       stall_frame_counts[i] = 0;
       continue;
     }
 
-    s32 latest_remote_frame = pad->latest_frame;
-    bool has_enough_new_inputs =
-        latest_remote_frame - finalized_frame >= (frame - finalized_frame - ROLLBACK_MAX_FRAMES);
+    s32 latest_remote_frame = player_info.latest_frame;
+    bool has_enough_new_inputs = latest_remote_frame >= frame;
     if (has_enough_new_inputs)
     {
       stall_frame_counts[i] = 0;
@@ -1395,15 +1395,15 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
     {
       WARN_LOG_FMT(SLIPPI_ONLINE,
                    "Force-disconnecting player {} after 7s stall (frame: {} | latest: {})",
-                   pad->player_idx, frame, latest_remote_frame);
-      slippi_netplay->ForceDisconnectPlayer(pad->player_idx);
+                   player_info.player_idx, frame, latest_remote_frame);
+      slippi_netplay->ForceDisconnectPlayer(player_info.player_idx);
       stall_frame_counts[i] = 0;
       continue;
     }
     WARN_LOG_FMT(SLIPPI_ONLINE,
                  "Halting for one frame due to rollback limit (frame: {} | latest: {} | finalized: "
                  "{} | player: {})...",
-                 frame, latest_remote_frame, finalized_frame, pad->player_idx);
+                 frame, latest_remote_frame, finalized_frame, player_info.player_idx);
   }
 
   if (any_player_needs_inputs)
