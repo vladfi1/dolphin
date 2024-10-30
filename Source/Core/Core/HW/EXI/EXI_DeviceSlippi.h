@@ -257,6 +257,7 @@ private:
   std::vector<u8> playback_savestate_payload;
   std::vector<u8> gecko_list;
 
+  u64 latest_remote_frame_time_ms;
   u32 stall_frame_count = 0;
   bool is_connection_stalled = false;
 

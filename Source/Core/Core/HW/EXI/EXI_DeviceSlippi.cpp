@@ -1274,6 +1274,7 @@ void CEXISlippi::handleOnlineInputs(u8* payload)
     }
 
     // Reset stall counter
+    latest_remote_frame_time_ms = Common::Timer::NowMs();
     is_connection_stalled = false;
     stall_frame_count = 0;
 
@@ -1350,7 +1351,12 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
   if (!has_enough_new_inputs)
   {
     stall_frame_count++;
-    if (stall_frame_count > 60 * 7)
+
+    // If we're running faster than realtime, the stall_frame_count won't be
+    // accurate, so use the actual time instead.
+    auto now = Common::Timer::NowMs();
+
+    if (now - latest_remote_frame_time_ms > 7 * 1000)
     {
       // 7 second stall will disconnect game
       is_connection_stalled = true;
@@ -1362,6 +1368,8 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
         frame, latest_remote_frame, finalized_frame);
     return true;
   }
+
+  latest_remote_frame_time_ms = Common::Timer::NowMs();
 
   return false;
 
