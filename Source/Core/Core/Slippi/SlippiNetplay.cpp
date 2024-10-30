@@ -2034,6 +2034,26 @@ u64 SlippiNetplayClient::GetPingUs(int index)
   return ping_us[index].load(std::memory_order_relaxed);
 }
 
+RemotePlayerInfo SlippiNetplayClient::GetRemotePlayerInfo(int index)
+{
+  std::lock_guard<std::mutex> lk(pad_mutex);
+
+  u8 player_idx = index >= m_player_idx ? index + 1 : index;
+  bool is_active = player_active[player_idx].load(std::memory_order_acquire);
+  s32 despawn_frame = m_despawn_frames[player_idx].load(std::memory_order_acquire);
+
+  int32_t last_player_frame = 0;
+  for (auto it = m_remote_pad_queue[index].rbegin(); it != m_remote_pad_queue[index].rend(); ++it)
+  {
+    last_player_frame = std::max(last_player_frame, (*it)->frame);
+  }
+
+  return RemotePlayerInfo{.player_idx = player_idx,
+                          .is_connected = is_active,
+                          .despawn_frame = despawn_frame,
+                          .latest_frame = last_player_frame};
+}
+
 // return the smallest time offset among all remote players
 s32 SlippiNetplayClient::CalcTimeOffsetUs()
 {

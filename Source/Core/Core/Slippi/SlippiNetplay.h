@@ -169,6 +169,14 @@ public:
   }
 };
 
+struct RemotePlayerInfo
+{
+  u8 player_idx;
+  bool is_connected;
+  s32 despawn_frame;
+  int32_t latest_frame;
+};
+
 class SlippiNetplayClient
 {
 public:
@@ -222,6 +230,7 @@ public:
   SlippiDisconnectReason GetDisconnectReason();
   void FillDroppedPlayerInputs(s32 frame);
   SlippiMatchInfo* GetMatchInfo();
+  RemotePlayerInfo GetRemotePlayerInfo(int index);
   SlippiPlayerSelections GetSlippiRemoteChatMessage(bool is_chat_enabled);
   u8 GetSlippiRemoteSentChatMessage(bool is_chat_enabled);
   s32 CalcTimeOffsetUs();
