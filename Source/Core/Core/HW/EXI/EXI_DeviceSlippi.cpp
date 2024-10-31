@@ -1366,10 +1366,11 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
       is_connection_stalled = true;
     }
 
-    WARN_LOG_FMT(
-        SLIPPI_ONLINE,
-        "Halting for one frame due to rollback limit (frame: {} | latest: {} | finalized: {})...",
-        frame, latest_remote_frame, finalized_frame);
+    // Disable these warnings because we're always halting when running faster than realtime.
+    // WARN_LOG_FMT(
+    //     SLIPPI_ONLINE,
+    //     "Halting for one frame due to rollback limit (frame: {} | latest: {} | finalized: {})...",
+    //     frame, latest_remote_frame, finalized_frame);
     return true;
   }
 
