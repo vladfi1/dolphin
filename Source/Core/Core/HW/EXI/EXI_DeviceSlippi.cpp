@@ -1324,6 +1324,24 @@ void CEXISlippi::handleOnlineInputs(u8* payload)
   prepareOpponentInputs(frame, should_skip);
 }
 
+bool CEXISlippi::shouldRunAhead()
+{
+  u8 remote_player_count = matchmaking->RemotePlayerCount();
+
+  // If the opponent is using the human_vs_bot build, we can run ahead to allow them
+  // to play with low input delay.
+  bool should_run_ahead = true;
+  for (int i = 0; i < remote_player_count; i++)
+  {
+    if (slippi_netplay->m_remote_dolphin_type[i] != SlippiNetplayClient::DolphinType::HUMAN_VS_BOT)
+    {
+      should_run_ahead = false;
+      break;
+    }
+  }
+  return should_run_ahead;
+}
+
 bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
 {
   auto status = slippi_netplay->GetSlippiConnectStatus();
@@ -1376,7 +1394,8 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
 
   latest_remote_frame_time_ms = Common::Timer::NowMs();
 
-  return false;
+  if (shouldRunAhead())
+    return false;
 
   stall_frame_count = 0;
 
@@ -1587,7 +1606,7 @@ void CEXISlippi::prepareOpponentInputs(s32 frame, bool should_skip)
   {
     frame_result = 3;  // Indicates we have disconnected
   }
-  else if (shouldAdvanceOnlineFrame(frame))
+  else if (!shouldRunAhead() && shouldAdvanceOnlineFrame(frame))
   {
     frame_result = 4;
   }
