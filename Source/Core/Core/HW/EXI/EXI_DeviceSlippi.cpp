@@ -1291,7 +1291,11 @@ void CEXISlippi::handleOnlineInputs(u8* payload)
     // Reset character selections such that they are cleared for next game
     local_selections.Reset();
     if (slippi_netplay)
+    {
       slippi_netplay->StartSlippiGame();
+
+      slippi_netplay->SendDolphinType();
+    }
   }
 
   if (isDisconnected())

@@ -84,6 +84,7 @@ SlippiNetplayClient::SlippiNetplayClient(std::vector<std::string> addrs, std::ve
     this->last_frame_timing[i] = FrameTiming();
     this->ping_us[i] = 0;
     this->last_frame_acked[i] = 0;
+    this->m_remote_dolphin_type[i] = DolphinType::STANDARD;
   }
 
   SLIPPI_NETPLAY = std::move(this);
@@ -524,6 +525,36 @@ unsigned int SlippiNetplayClient::OnData(sf::Packet& packet, ENetPeer* peer)
     //          results.fighters[1].current_health);
 
     remote_sync_states[p_idx] = results;
+  }
+  break;
+
+  case NetPlay::MessageID::SLIPPI_DOLPHIN_TYPE:
+  {
+    u8 packet_player_port;
+    if (!(packet >> packet_player_port))
+    {
+      ERROR_LOG_FMT(SLIPPI_ONLINE, "Netplay packet too small to read player index");
+      break;
+    }
+    u8 p_idx = PlayerIdxFromPort(packet_player_port);
+    if (p_idx >= m_remote_player_count)
+    {
+      ERROR_LOG_FMT(SLIPPI_ONLINE, "Got packet with invalid player idx {}", p_idx);
+      break;
+    }
+    u8 dolphin_type;
+    if (!(packet >> dolphin_type))
+    {
+      ERROR_LOG_FMT(SLIPPI_ONLINE, "Netplay packet too small to read dolphin type");
+      break;
+    }
+    INFO_LOG_FMT(SLIPPI_ONLINE, "Received dolphin type from opponent {}: {}", p_idx, dolphin_type);
+    DolphinType dolphin_type_enum = static_cast<DolphinType>(dolphin_type);
+    if (dolphin_type_enum != m_remote_dolphin_type[p_idx])
+    {
+      WARN_LOG_FMT(SLIPPI_ONLINE, "Dolphin type changed for player {}: {}", p_idx, dolphin_type);
+    }
+    m_remote_dolphin_type[p_idx] = dolphin_type_enum;
   }
   break;
 
@@ -1204,6 +1235,20 @@ void SlippiNetplayClient::SendSyncedGameState(SlippiSyncedGameState& s)
     *spac << s.fighters[i].current_health;
   }
   SendAsync(std::move(spac));
+}
+
+void SlippiNetplayClient::SendDolphinType()
+{
+  if (m_sent_dolphin_type)
+    return;
+
+  auto spac = std::make_unique<sf::Packet>();
+  *spac << static_cast<u8>(NetPlay::MessageID::SLIPPI_DOLPHIN_TYPE);
+  *spac << this->m_player_idx;
+  *spac << static_cast<u8>(DolphinType::BOT);
+  SendAsync(std::move(spac));
+
+  m_sent_dolphin_type = true;
 }
 
 bool SlippiNetplayClient::GetGamePrepResults(u8 step_idx, SlippiGamePrepStepResults& res)

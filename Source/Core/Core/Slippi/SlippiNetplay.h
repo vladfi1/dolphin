@@ -181,6 +181,7 @@ public:
   void SetMatchSelections(SlippiPlayerSelections& s);
   void SendGamePrepStep(SlippiGamePrepStepResults& s);
   void SendSyncedGameState(SlippiSyncedGameState& s);
+  void SendDolphinType();
   bool GetGamePrepResults(u8 step_idx, SlippiGamePrepStepResults& res);
   std::unique_ptr<SlippiRemotePadOutput> GetFakePadOutput(int frame);
   std::unique_ptr<SlippiRemotePadOutput> GetSlippiRemotePad(int index, int max_frame_count);
@@ -199,6 +200,16 @@ public:
   std::unique_ptr<SlippiPlayerSelections> remote_chat_message_selection =
       nullptr;  // most recent chat message player selection (message + player index)
   u8 remote_sent_chat_message_id = 0;  // most recent chat message id that current player sent
+
+  enum class DolphinType
+  {
+    STANDARD,
+    BOT,
+    HUMAN_VS_BOT,
+  };
+
+  DolphinType m_remote_dolphin_type[SLIPPI_REMOTE_PLAYER_MAX];
+  bool m_sent_dolphin_type = false;
 
 protected:
   struct
