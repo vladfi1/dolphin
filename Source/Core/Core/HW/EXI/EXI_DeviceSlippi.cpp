@@ -1430,10 +1430,10 @@ CEXISlippi::OnlineFrameSkip CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 fin
       stall_frame_counts[i] = 0;
       continue;
     }
-    WARN_LOG_FMT(SLIPPI_ONLINE,
-                 "Halting for one frame due to rollback limit (frame: {} | latest: {} | finalized: "
-                 "{} | player: {})...",
-                 frame, latest_remote_frame, finalized_frame, player_info.player_idx);
+    // WARN_LOG_FMT(SLIPPI_ONLINE,
+    //              "Halting for one frame due to rollback limit (frame: {} | latest: {} | finalized: "
+    //              "{} | player: {})...",
+    //              frame, latest_remote_frame, finalized_frame, player_info.player_idx);
   }
 
   if (any_player_needs_inputs)
