@@ -1361,6 +1361,8 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
     return true;
   }
 
+  return false;
+
   stall_frame_count = 0;
 
   s32 frame_time = 16683;
