@@ -6,8 +6,8 @@ CMAKE_FLAGS='-DLINUX_LOCAL_DEV=true -DENABLE_HEADLESS=true -DENABLE_QT=false'
 PLAYBACK_CODES_PATH="./Data/PlaybackGeckoCodes/"
 
 DATA_SYS_PATH="./Data/Sys/"
-BUILD_DIR="build-headless"
-BINARY_PATH="./$BUILD_DIR/Binaries/"
+BUILD_DIR="build-bot"
+BINARY_PATH="${BUILD_DIR}/Binaries"
 
 # Build type
 if [ "$1" == "playback" ]
