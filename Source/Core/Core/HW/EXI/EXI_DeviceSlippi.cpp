@@ -1409,6 +1409,8 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
   if (any_player_needs_inputs)
     return true;
 
+  return false;
+
   s32 frame_time = 16683;
   s32 t1 = 10000;
   s32 t2 = (2 * frame_time) + t1;
