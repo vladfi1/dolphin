@@ -1307,6 +1307,8 @@ void CEXISlippi::handleOnlineInputs(u8* payload)
   {
     // Send inputs that have not yet been acked
     slippi_netplay->SendSlippiPad(nullptr);
+
+    Common::SleepCurrentThread(6);
   }
   else
   {
