@@ -1455,6 +1455,12 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
 
 bool CEXISlippi::shouldAdvanceOnlineFrame(s32 frame)
 {
+  if(shouldRunAhead())
+  {
+    Config::SetCurrent(Config::MAIN_EMULATION_SPEED, 0.0);
+    return false;
+  }
+
   // Logic below is used to test frame advance by forcing it more often
   // SConfig::GetInstance().m_EmulationSpeed = 0.5f;
   // if (frame > 120 && frame % 10 < 3)
@@ -1607,7 +1613,7 @@ void CEXISlippi::prepareOpponentInputs(s32 frame, bool should_skip)
   {
     frame_result = 3;  // Indicates we have disconnected
   }
-  else if (!shouldRunAhead() && shouldAdvanceOnlineFrame(frame))
+  else if (shouldAdvanceOnlineFrame(frame))
   {
     frame_result = 4;
   }
@@ -3173,6 +3179,7 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
     switch (byte)
     {
     case CMD_RECEIVE_GAME_END:
+      Config::SetCurrent(Config::MAIN_EMULATION_SPEED, 1.0);
       writeToFileAsync(&mem_ptr[buf_loc], payload_len + 1, "close");
       SlippiSpectateServer::getInstance().write(&mem_ptr[buf_loc], payload_len + 1);
       SlippiSpectateServer::getInstance().endGame();
