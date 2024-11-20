@@ -1457,7 +1457,7 @@ bool CEXISlippi::shouldAdvanceOnlineFrame(s32 frame)
 {
   if(shouldRunAhead())
   {
-    Config::SetCurrent(Config::MAIN_EMULATION_SPEED, 0.0);
+    Config::SetCurrent(Config::MAIN_EMULATION_SPEED, 1.1);
     return false;
   }
 
