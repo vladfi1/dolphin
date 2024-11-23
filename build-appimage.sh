@@ -3,7 +3,7 @@
 
 BUILD_DIR='./build-bot'
 
-NETPLAY_APPIMAGE_STRING="Slippi_Netplay_Mainline_NoGui-x86_64.AppImage"
+NETPLAY_APPIMAGE_STRING="Slippi_Netplay_Mainline_NoGui_BvH-x86_64.AppImage"
 PLAYBACK_APPIMAGE_STRING="Slippi_Playback_Mainline-x86_64.AppImage"
 
 LINUXDEPLOY_PATH="https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous"
