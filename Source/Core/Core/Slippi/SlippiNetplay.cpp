@@ -1239,8 +1239,8 @@ void SlippiNetplayClient::SendSyncedGameState(SlippiSyncedGameState& s)
 
 void SlippiNetplayClient::SendDolphinType()
 {
-  if (m_sent_dolphin_type)
-    return;
+  // if (m_sent_dolphin_type)
+  //   return;
 
   auto spac = std::make_unique<sf::Packet>();
   *spac << static_cast<u8>(NetPlay::MessageID::SLIPPI_DOLPHIN_TYPE);
