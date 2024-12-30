@@ -3386,6 +3386,7 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 
   if (byte == CMD_MENU_FRAME)
   {
+    Config::SetCurrent(Config::MAIN_EMULATION_SPEED, 1.0);
     SlippiSpectateServer::getInstance().write(&mem_ptr[0], _uSize);
     g_need_input_for_frame = true;
     return;
