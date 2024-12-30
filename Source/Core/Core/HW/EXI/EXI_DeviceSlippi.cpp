@@ -3152,6 +3152,7 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 
   if (byte == CMD_MENU_FRAME)
   {
+    Config::SetCurrent(Config::MAIN_EMULATION_SPEED, 1.0);
     SlippiSpectateServer::getInstance().write(&mem_ptr[0], _uSize);
     g_need_input_for_frame = true;
     return;
@@ -3179,7 +3180,6 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
     switch (byte)
     {
     case CMD_RECEIVE_GAME_END:
-      Config::SetCurrent(Config::MAIN_EMULATION_SPEED, 1.0);
       writeToFileAsync(&mem_ptr[buf_loc], payload_len + 1, "close");
       SlippiSpectateServer::getInstance().write(&mem_ptr[buf_loc], payload_len + 1);
       SlippiSpectateServer::getInstance().endGame();
