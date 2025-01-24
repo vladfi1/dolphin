@@ -254,6 +254,7 @@ private:
   void handleMatchQuality(s32 frame, bool is_stall);
   bool shouldAdvanceOnlineFrame(s32 frame);
   bool opponentRunahead();
+  bool shouldRunAhead();
   void handleLogInRequest();
   void handleLogOutRequest();
   void prepareOnlineStatus();
