@@ -1419,7 +1419,11 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
   if (any_player_needs_inputs)
     return true;
 
-  return false;
+  if (shouldRunAhead())
+  {
+    // If we are running ahead, don't skip frames unless we need inputs
+    return false;
+  }
 
   s32 frame_time = 16683;
   s32 t1 = 10000;
@@ -1630,6 +1634,13 @@ bool CEXISlippi::opponentRunahead()
   }
 
   return true;
+}
+
+bool CEXISlippi::shouldRunAhead()
+{
+  // If we are a bot player, we should run ahead to "donate" our delay frames.
+
+  return matchmaking->GetPlayerInfo()[matchmaking->LocalPlayerIndex()].is_bot;
 }
 
 void CEXISlippi::prepareOpponentInputs(s32 frame, bool should_skip)

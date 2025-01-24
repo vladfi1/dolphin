@@ -243,6 +243,7 @@ private:
   void handlePoorMatchPerformance(s32 frame);
   bool shouldAdvanceOnlineFrame(s32 frame);
   bool opponentRunahead();
+  bool shouldRunAhead();
   void handleLogInRequest();
   void handleLogOutRequest();
   void prepareOnlineStatus();
