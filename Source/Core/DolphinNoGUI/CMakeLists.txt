@@ -61,3 +61,16 @@ endif()
 
 set(CPACK_PACKAGE_EXECUTABLES ${CPACK_PACKAGE_EXECUTABLES} dolphin-nogui)
 install(TARGETS dolphin-nogui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# Copy Playback Codes if needed
+if (SLIPPI_PLAYBACK)
+  #add_custom_command(TARGET dolphin-emu POST_BUILD
+  #  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/Data/PlaybackGeckoCodes/GALE01r2.ini" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Sys/GameSettings/GALE01r2.ini"
+  #)
+  #add_custom_command(TARGET dolphin-emu POST_BUILD
+  #  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/Data/PlaybackGeckoCodes/GALJ01r2.ini" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Sys/GameSettings/GALJ01r2.ini"
+  #)
+  add_custom_command(TARGET dolphin-nogui POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/Data/PlaybackGeckoCodes/" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Sys/GameSettings/"
+  )
+endif()
