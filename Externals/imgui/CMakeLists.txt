@@ -21,6 +21,12 @@ target_compile_definitions(imgui
     IMGUI_DEFINE_MATH_OPERATORS
 )
 
+# Disable gcc's interprocedural scalar replacement to make template instantiations globally visible
+# This is necessary because we rely on imgui's private api... yikes.
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  target_compile_options(imgui PRIVATE -fno-ipa-sra)
+endif()
+
 target_link_libraries(imgui
 PRIVATE
   fmt::fmt
