@@ -16,6 +16,10 @@
 #include "Common/FileUtil.h"
 #include "Common/IniFile.h"
 
+#ifdef IS_PLAYBACK
+#include "Core/Config/MainSettings.h"
+#endif
+
 #include "InputCommon/ControllerEmu/Control/Input.h"
 #include "InputCommon/ControllerEmu/ControlGroup/Buttons.h"
 #include "InputCommon/ControllerEmu/ControlGroup/ControlGroup.h"

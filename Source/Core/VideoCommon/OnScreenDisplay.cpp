@@ -240,10 +240,10 @@ static std::string GetTimeForFrame(s32 currFrame)
   return std::string(currTime);
 }
 
-bool show_help = false;
-bool show_settings = false;
-u32 idle_tick = Common::Timer::NowMs();
-ImVec2 prev_mouse(0, 0);
+static bool show_help = false;
+static bool show_settings = false;
+static u32 idle_tick = Common::Timer::NowMs();
+static ImVec2 prev_mouse(0, 0);
 
 bool ButtonCustom(const char* label, const ImVec2& size_arg,
                   ImU32 fill = ImGui::GetColorU32(ImVec4(0.0f, 0.0f, 0.0f, 0.0f)),
@@ -279,8 +279,6 @@ bool ButtonCustom(const char* label, const ImVec2& size_arg,
   if (!ImGui::ItemAdd(bb, id))
     return false;
 
-  if (g.CurrentItemFlags & ImGuiItemFlags_ButtonRepeat)
-    flags |= ImGuiButtonFlags_Repeat;
   bool hovered, held;
   bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, flags);
   if (pressed)
