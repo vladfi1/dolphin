@@ -12,6 +12,7 @@
 #include <unistd.h>
 #endif
 
+#include "Core/Slippi/SlippiPad.h"
 #include "InputCommon/ControllerInterface/ControllerInterface.h"
 
 namespace ciface::Pipes
@@ -42,6 +43,7 @@ public:
   Core::DeviceRemoval UpdateInput() override;
   std::string GetName() const override { return m_name; }
   std::string GetSource() const override { return "Pipe"; }
+  SlippiPad GetSlippiPad();
 
 private:
   class PipeInput : public Input
@@ -60,6 +62,7 @@ private:
   void AddAxis(const std::string& name, double value);
   bool ParseCommand(const std::string& command);
   void SetAxis(const std::string& entry, double value);
+  void SetButtonState(const std::string& button, const std::string& press);
   s32 readFromPipe(PIPE_FD file_descriptor, char* in_buffer, size_t size);
 
   const PIPE_FD  m_fd;
@@ -67,5 +70,6 @@ private:
   std::string m_buf;
   std::map<std::string, PipeInput*> m_buttons;
   std::map<std::string, PipeInput*> m_axes;
+  SlippiPad m_current_pad{0};
 };
 }  // namespace ciface::Pipes

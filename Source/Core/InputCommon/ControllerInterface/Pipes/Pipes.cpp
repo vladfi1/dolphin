@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdlib>
 #include <fcntl.h>
 #include <iostream>
@@ -236,9 +237,31 @@ void PipeDevice::AddAxis(const std::string& name, double value)
   AddFullAnalogSurfaceInputs(ax_lo, ax_hi);
 }
 
+static u8 FloatToU8(double value)
+{
+  // Match the empirical behavior of the named pipes.
+  s8 raw = std::floor((value - 0.5) * 254);
+  return reinterpret_cast<u8&>(raw);
+}
+
 void PipeDevice::SetAxis(const std::string& entry, double value)
 {
   value = std::clamp(value, 0.0, 1.0);
+
+  // Populate m_current_pad for SlippiPad tracking
+  if (entry == "MAIN X")
+    m_current_pad.pad_buf[2] = FloatToU8(value);
+  else if (entry == "MAIN Y")
+    m_current_pad.pad_buf[3] = FloatToU8(value);
+  else if (entry == "C X")
+    m_current_pad.pad_buf[4] = FloatToU8(value);
+  else if (entry == "C Y")
+    m_current_pad.pad_buf[5] = FloatToU8(value);
+  else if (entry == "L")
+    m_current_pad.pad_buf[6] = static_cast<u8>(value * 255);
+  else if (entry == "R")
+    m_current_pad.pad_buf[7] = static_cast<u8>(value * 255);
+
   double hi = std::max(0.0, value - 0.5) * 2.0;
   double lo = (0.5 - std::min(0.5, value)) * 2.0;
   auto search_hi = m_axes.find(entry + " +");
@@ -266,6 +289,7 @@ bool PipeDevice::ParseCommand(const std::string& command)
     valid = false;
   else if (tokens[0] == "PRESS" || tokens[0] == "RELEASE")
   {
+    SetButtonState(tokens[1], tokens[0]);
     auto search = m_buttons.find(tokens[1]);
     if (search != m_buttons.end())
     {
@@ -279,11 +303,7 @@ bool PipeDevice::ParseCommand(const std::string& command)
     if (tokens.size() == 3)
     {
       double value = StringToDouble(tokens[2]);
-      // Note: inputs here are squashed into [0.5, 1], corresponding to the
-      // "ax_hi" PipeInput. The corresponding setting in GCPadNew.ini is
-      // "Triggers/L-Analog=Axis L +" (and same for R). If we didn't squash,
-      // users would instead use "Axis L -+" or "Full Axis +".
-      SetAxis(tokens[1], (value / 2.0) + 0.5);
+      SetAxis(tokens[1], value);
       valid = true;
     }
     // Main or C Stick
@@ -302,4 +322,82 @@ bool PipeDevice::ParseCommand(const std::string& command)
 
   return false;
 }
+SlippiPad PipeDevice::GetSlippiPad()
+{
+  return m_current_pad;
+}
+
+void PipeDevice::SetButtonState(const std::string& button, const std::string& press)
+{
+  u8 mask = 0x00;
+  int index = 0;
+  bool is_press = press == "PRESS";
+
+  if (button == "A")
+  {
+    mask = 0x01;
+    index = 0;
+  }
+  else if (button == "B")
+  {
+    mask = 0x02;
+    index = 0;
+  }
+  else if (button == "X")
+  {
+    mask = 0x04;
+    index = 0;
+  }
+  else if (button == "Y")
+  {
+    mask = 0x08;
+    index = 0;
+  }
+  else if (button == "START")
+  {
+    mask = 0x10;
+    index = 0;
+  }
+  else if (button == "L")
+  {
+    mask = 0x40;
+    index = 1;
+  }
+  else if (button == "R")
+  {
+    mask = 0x20;
+    index = 1;
+  }
+  else if (button == "D_LEFT")
+  {
+    mask = 0x01;
+    index = 1;
+  }
+  else if (button == "D_RIGHT")
+  {
+    mask = 0x02;
+    index = 1;
+  }
+  else if (button == "D_DOWN")
+  {
+    mask = 0x04;
+    index = 1;
+  }
+  else if (button == "D_UP")
+  {
+    mask = 0x08;
+    index = 1;
+  }
+  else if (button == "Z")
+  {
+    mask = 0x10;
+    index = 1;
+  }
+
+  if (is_press)
+    m_current_pad.pad_buf[index] |= mask;
+  else
+    m_current_pad.pad_buf[index] &= ~mask;
+}
+
 }  // namespace ciface::Pipes

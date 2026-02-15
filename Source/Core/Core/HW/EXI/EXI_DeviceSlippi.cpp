@@ -38,6 +38,7 @@
 #include "Core/Slippi/SlippiReplayComm.h"
 #include "Core/State.h"
 #include "Core/System.h"
+#include "InputCommon/ControllerInterface/ControllerInterface.h"
 #include "VideoCommon/OnScreenDisplay.h"
 
 // The Rust library that houses a "shadow" EXI Device that we can call into.
@@ -3196,6 +3197,35 @@ void CEXISlippi::handleGetRank()
   m_read_queue.push_back(static_cast<u8>(rank_info.rank_change));
 }
 
+void CEXISlippi::prepareOverwriteInputs()
+{
+  m_read_queue.clear();
+  // If blocking pipe input is configured, this will block until pipe input is sent for this frame
+  g_controller_interface.UpdateInput();
+  std::map<int, SlippiPad> pads = g_controller_interface.GetSlippiPads();
+
+  // Insert the pads
+  for (int i = 1; i <= 4; i++)
+  {
+    if (pads.count(i - 1) != 0)
+    {
+      // Do overwrite this port
+      m_read_queue.push_back(1);
+      for (int j = 0; j < SLIPPI_PAD_DATA_SIZE; j++)
+      {
+        m_read_queue.push_back(pads.at(i - 1).pad_buf[j]);
+      }
+    }
+    else
+    {
+      // Don't overwrite this port
+      m_read_queue.push_back(0);
+      appendWordToBuffer(&m_read_queue, 0);
+      appendWordToBuffer(&m_read_queue, 0);
+    }
+  }
+}
+
 void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
 {
   auto& system = Core::System::GetInstance();
@@ -3407,6 +3437,9 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
       slprs_fetch_match_result(slprs_exi_device_ptr, recent_mm_result.id.c_str());
       break;
     }
+    case CMD_OVERWRITE_INPUTS:
+      prepareOverwriteInputs();
+      break;
     default:
       writeToFileAsync(&mem_ptr[buf_loc], payload_len + 1, "");
       SlippiSpectateServer::getInstance().write(&mem_ptr[buf_loc], payload_len + 1);

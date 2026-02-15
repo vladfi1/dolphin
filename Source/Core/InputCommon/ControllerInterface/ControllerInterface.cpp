@@ -7,7 +7,12 @@
 
 #include "Common/Assert.h"
 #include "Common/Logging/Log.h"
+#include "Core/Config/MainSettings.h"
+#include "Core/HW/GCPad.h"
+#include "Core/HW/SI/SI_Device.h"
 #include "Core/HW/WiimoteReal/WiimoteReal.h"
+#include "InputCommon/ControllerEmu/ControllerEmu.h"
+#include "InputCommon/InputConfig.h"
 
 #ifdef CIFACE_USE_WIN32
 #include "InputCommon/ControllerInterface/Win32/Win32.h"
@@ -372,6 +377,37 @@ void ControllerInterface::UpdateInput()
 
   // All needed inputs have been read.
   g_need_input_for_frame = false;
+}
+
+std::map<int, SlippiPad> ControllerInterface::GetSlippiPads()
+{
+  std::map<int, SlippiPad> pads;
+
+  std::lock_guard lk(m_devices_mutex);
+
+  for (const auto& d : m_devices)
+  {
+    if (d->GetSource() != "Pipe")
+      continue;
+
+    auto* pipe_device = static_cast<ciface::Pipes::PipeDevice*>(d.get());
+
+    // Find which controller this device is attached to
+    for (int j = 0; j < 4; j++)
+    {
+      if (Config::Get(Config::GetInfoForSIDevice(j)) !=
+          SerialInterface::SIDEVICE_GC_CONTROLLER)
+        continue;
+
+      const auto& device = Pad::GetConfig()->GetController(j)->GetDefaultDevice();
+      if (device.name == d->GetName())
+      {
+        pads.emplace(j, pipe_device->GetSlippiPad());
+      }
+    }
+  }
+
+  return pads;
 }
 
 void ControllerInterface::SetCurrentInputChannel(ciface::InputChannel input_channel)

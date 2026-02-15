@@ -1,7 +1,7 @@
 #!/bin/bash -e
 # build-appimage.sh
 
-NETPLAY_APPIMAGE_STRING="Slippi_Netplay_Mainline_NoGui-x86_64.AppImage"
+NETPLAY_APPIMAGE_STRING="Slippi_Netplay_Mainline_ExiAI-x86_64.AppImage"
 PLAYBACK_APPIMAGE_STRING="Slippi_Playback_Mainline-x86_64.AppImage"
 
 LINUXDEPLOY_PATH="https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous"
@@ -57,7 +57,7 @@ cp Data/linux-env.sh ${APPDIR_HOOKS}
 mkdir -p AppDir
 ./Tools/linuxdeploy \
 	--appdir=./AppDir \
-	-e ./build-headless/Binaries/dolphin-emu \
+	-e ./build-exi-ai/Binaries/dolphin-emu \
 	-d ./Data/slippi-dolphin.desktop \
 	-i ./Data/dolphin-emu.png
 

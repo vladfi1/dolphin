@@ -6,11 +6,13 @@
 #include <atomic>
 #include <functional>
 #include <list>
+#include <map>
 #include <memory>
 #include <mutex>
 
 #include "Common/Matrix.h"
 #include "Common/WindowSystemInfo.h"
+#include "Core/Slippi/SlippiPad.h"
 #include "InputCommon/ControllerInterface/CoreDevice.h"
 #include "InputCommon/ControllerInterface/InputBackend.h"
 
@@ -101,6 +103,7 @@ public:
   void PlatformPopulateDevices(std::function<void()> callback);
   bool IsInit() const { return m_is_init; }
   void UpdateInput();
+  std::map<int, SlippiPad> GetSlippiPads();
 
   // Set adjustment from the full render window aspect-ratio to the drawn aspect-ratio.
   // Used to fit mouse cursor inputs to the relevant region of the render window.
