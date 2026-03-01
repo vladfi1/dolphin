@@ -318,6 +318,25 @@ void SlippiSpectateServer::SlippicommSocketThread(void)
       }
     }
 
+    // Evict events that have been sent to all connected clients.
+    // After writeEvents, every handshaked socket's cursor is at m_event_buffer.size(),
+    // so we can clear the entire buffer. The any_handshaked guard ensures we keep
+    // buffering until at least one client has connected (e.g. libmelee), so that
+    // late-connecting clients can still catch up from the start of the game.
+    {
+      bool any_handshaked = false;
+      for (auto& [id, socket] : m_sockets)
+        if (socket->m_shook_hands) { any_handshaked = true; break; }
+
+      if (any_handshaked && !m_event_buffer.empty())
+      {
+        m_cursor_offset += m_event_buffer.size();
+        m_event_buffer.clear();
+        for (auto& [id, socket] : m_sockets)
+          socket->m_cursor = 0;
+      }
+    }
+
     ENetEvent event;
     while (enet_host_service(server, &event, 1) > 0)
     {
