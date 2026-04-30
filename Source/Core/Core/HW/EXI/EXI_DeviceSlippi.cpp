@@ -1387,7 +1387,8 @@ bool CEXISlippi::shouldSkipOnlineFrame(s32 frame, s32 finalized_frame)
     }
 
     s32 latest_remote_frame = player_info.latest_frame;
-    bool has_enough_new_inputs = latest_remote_frame >= frame;
+    int32_t slack = shouldRunAhead() ? 0 : ROLLBACK_MAX_FRAMES;
+    bool has_enough_new_inputs = latest_remote_frame >= frame - slack;
     if (has_enough_new_inputs)
     {
       stall_frame_counts[i] = 0;
