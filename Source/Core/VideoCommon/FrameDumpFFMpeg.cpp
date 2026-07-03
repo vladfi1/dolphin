@@ -281,8 +281,14 @@ bool FFMpegFrameDump::CreateVideoFile()
   m_context->codec->width = m_context->width;
   m_context->codec->height = m_context->height;
   m_context->codec->time_base = time_base;
-  m_context->codec->gop_size = 1;
   m_context->codec->level = 1;
+  m_context->codec->max_b_frames = 0;
+  // gop_size of 1 means every frame is a keyframe. nvenc requires gop_size strictly
+  // greater than max_b_frames + 1 (i.e. at least 2 here) or it refuses to open the codec
+  // with "Gop Length should be greater than number of B frames + 1" - setting
+  // max_b_frames to 0 alone isn't sufficient, gop_size must also be bumped for it.
+  const bool is_nvenc = std::string(codec->name).find("nvenc") != std::string::npos;
+  m_context->codec->gop_size = is_nvenc ? 2 : 1;
 
   AVPixelFormat pix_fmt = AV_PIX_FMT_NONE;
 
