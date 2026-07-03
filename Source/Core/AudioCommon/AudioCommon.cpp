@@ -221,8 +221,27 @@ void StartAudioDump(Core::System& system)
   std::string base_name =
       fmt::format("{}_{:%Y-%m-%d_%H-%M-%S}", path_prefix, fmt::localtime(start_time));
 
+  // DTK (disc background music) dump always goes to the default location; only the DSP
+  // dump (the mixed game audio) honors --output-directory/-o, matching Ishiiruka Playback.
+  // With neither flag set, behavior is unchanged from stock mainline.
   const std::string audio_file_name_dtk = fmt::format("{}_dtkdump.wav", base_name);
-  const std::string audio_file_name_dsp = fmt::format("{}_dspdump.wav", base_name);
+  const std::string& output_directory = SConfig::GetInstance().m_strOutputDirectory;
+  const std::string& output_filename_base = SConfig::GetInstance().m_strOutputFilenameBase;
+  std::string audio_file_name_dsp;
+  if (!output_filename_base.empty())
+  {
+    const std::string dsp_dump_directory =
+        !output_directory.empty() ? output_directory : File::GetUserPath(D_DUMPAUDIO_IDX);
+    audio_file_name_dsp = fmt::format("{}{}.wav", dsp_dump_directory, output_filename_base);
+  }
+  else if (!output_directory.empty())
+  {
+    audio_file_name_dsp = fmt::format("{}dspdump.wav", output_directory);
+  }
+  else
+  {
+    audio_file_name_dsp = fmt::format("{}_dspdump.wav", base_name);
+  }
   File::CreateFullPath(audio_file_name_dtk);
   File::CreateFullPath(audio_file_name_dsp);
   sound_stream->GetMixer()->StartLogDTKAudio(audio_file_name_dtk);

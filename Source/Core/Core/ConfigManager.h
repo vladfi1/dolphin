@@ -64,6 +64,13 @@ struct SConfig
 
   std::string m_debugger_game_id;
 
+  // Overrides for --output-directory / -o, --output-filename-base.
+  // When set, audio/video frame dumps are written to
+  // m_strOutputDirectory + m_strOutputFilenameBase + "." + <extension>
+  // instead of the default User/Dump/{Frames,Audio}/<GameID>_<timestamp> naming.
+  std::string m_strOutputDirectory;
+  std::string m_strOutputFilenameBase;
+
   // TODO: remove this as soon as the ticket view hack in IOS/ES/Views is dropped.
   bool m_disc_booted_from_game_list = false;
 

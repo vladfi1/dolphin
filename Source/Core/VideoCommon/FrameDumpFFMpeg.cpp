@@ -124,13 +124,27 @@ std::string GetDumpPath(const std::string& extension, std::time_t time, u32 inde
   if (!dump_path.empty())
     return dump_path;
 
-  const std::string path_prefix =
-      File::GetUserPath(D_DUMPFRAMES_IDX) + SConfig::GetInstance().GetGameID();
+  const std::string& output_directory = SConfig::GetInstance().m_strOutputDirectory;
+  const std::string& output_filename_base = SConfig::GetInstance().m_strOutputFilenameBase;
 
-  const std::string base_name =
-      fmt::format("{}_{:%Y-%m-%d_%H-%M-%S}_{}", path_prefix, fmt::localtime(time), index);
+  std::string path;
+  if (!output_filename_base.empty())
+  {
+    const std::string dump_directory =
+        !output_directory.empty() ? output_directory : File::GetUserPath(D_DUMPFRAMES_IDX);
+    path = fmt::format("{}{}.{}", dump_directory, output_filename_base, extension);
+  }
+  else
+  {
+    const std::string path_prefix =
+        (!output_directory.empty() ? output_directory : File::GetUserPath(D_DUMPFRAMES_IDX)) +
+        SConfig::GetInstance().GetGameID();
 
-  const std::string path = fmt::format("{}.{}", base_name, extension);
+    const std::string base_name =
+        fmt::format("{}_{:%Y-%m-%d_%H-%M-%S}_{}", path_prefix, fmt::localtime(time), index);
+
+    path = fmt::format("{}.{}", base_name, extension);
+  }
 
   // Ask to delete file.
   if (File::Exists(path))

@@ -322,6 +322,20 @@ int main(int argc, char* argv[])
   }
 #endif
 
+  if (options.is_set("output_directory"))
+  {
+    std::string output_directory = static_cast<const char*>(options.get("output_directory"));
+    if (!output_directory.empty() && output_directory.back() != '/' &&
+        output_directory.back() != '\\')
+      output_directory += '/';
+    SConfig::GetInstance().m_strOutputDirectory = output_directory;
+  }
+  if (options.is_set("output_filename_base"))
+  {
+    SConfig::GetInstance().m_strOutputFilenameBase =
+        static_cast<const char*>(options.get("output_filename_base"));
+  }
+
   if (save_state_path && !game_specified)
   {
     fprintf(stderr, "A save state cannot be loaded without specifying a game to launch.\n");
