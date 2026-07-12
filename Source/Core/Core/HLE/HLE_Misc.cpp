@@ -3,6 +3,9 @@
 
 #include "Core/HLE/HLE_Misc.h"
 
+#include <cstdio>
+#include <cstdlib>
+
 #include "Common/Common.h"
 #include "Common/CommonTypes.h"
 #include "Core/Core.h"
@@ -15,6 +18,24 @@
 
 namespace HLE_Misc
 {
+// HookType::Start trace hook on HSD_Randi (GALE01 0x80380580). Logs the RNG seed BEFORE the draw,
+// the requested range (r3), and the caller LR. HookType::Start runs this hook and THEN the original
+// HSD_Randi, so the game RNG stream is unaffected. Gated by the MSL_RNG_TRACE env var so it is
+// fully inert for normal runs and ordinary engine-dump probes. HSD_Rand/HSD_Randf draws are not
+// hooked but are recoverable as seed gaps between consecutive logged Randi calls (the LCG advances
+// one step/draw). Used only by the Needle post-hit RNG forensics; trace lines go to stderr.
+void HLE_HSD_RandiTrace(const Core::CPUThreadGuard& guard)
+{
+  static const bool s_enabled = std::getenv("MSL_RNG_TRACE") != nullptr;
+  if (!s_enabled)
+    return;
+  auto& ppc_state = guard.GetSystem().GetPPCState();
+  const u32 seed_before = PowerPC::MMU::HostRead_U32(guard, 0x804D5F90);
+  const u32 max_val = ppc_state.gpr[3];
+  const u32 caller = LR(ppc_state);
+  std::fprintf(stderr, "RNGTRACE seed=%08x max=%u lr=%08x\n", seed_before, max_val, caller);
+}
+
 // If you just want to kill a function, one of the three following are usually appropriate.
 // According to the PPC ABI, the return value is always in r3.
 void UnimplementedFunction(const Core::CPUThreadGuard& guard)

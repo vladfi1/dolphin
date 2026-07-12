@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <map>
 
 #include "Common/CommonTypes.h"
@@ -28,7 +29,7 @@ namespace HLE
 static std::map<u32, u32> s_hooked_addresses;
 
 // clang-format off
-constexpr std::array<Hook, 23> os_patches{{
+constexpr std::array<Hook, 24> os_patches{{
     // Placeholder, os_patches[0] is the "non-existent function" index
     {"FAKE_TO_SKIP_0",               HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Generic},
 
@@ -59,6 +60,7 @@ constexpr std::array<Hook, 23> os_patches{{
     {"__write_console",              HLE_OS::HLE_write_console,             HookType::Start,   HookFlag::Debug}, // used by sysmenu (+more?)
 
     {"GeckoCodehandler",             HLE_Misc::GeckoCodeHandlerICacheFlush, HookType::Start,   HookFlag::Fixed},
+    {"HSD_RandiTrace",               HLE_Misc::HLE_HSD_RandiTrace,          HookType::Start,   HookFlag::Fixed},
     {"GeckoHandlerReturnTrampoline", HLE_Misc::GeckoReturnTrampoline,       HookType::Replace, HookFlag::Fixed},
     {"AppLoaderReport",              HLE_OS::HLE_GeneralDebugPrint,         HookType::Start,   HookFlag::Fixed} // apploader needs OSReport-like function
 }};
@@ -106,6 +108,15 @@ void PatchFixedFunctions(Core::System& system)
   // This has to always be installed even if cheats are not enabled because of the possiblity of
   // loading a savestate where PC is inside the code handler while cheats are disabled.
   Patch(system, Gecko::HLE_TRAMPOLINE_ADDRESS, "GeckoHandlerReturnTrampoline");
+
+  // Needle post-hit RNG forensics: hook HSD_Randi (GALE01 0x80380580) by address when
+  // MSL_RNG_TRACE is set. Installed here at boot (before the function is JIT-compiled), so the JIT
+  // picks up the HookType::Start hook with no unsafe mid-execution cache clear. Inert unless
+  // MSL_RNG_TRACE is set.
+  if (std::getenv("MSL_RNG_TRACE") != nullptr)
+  {
+    Patch(system, 0x80380580, "HSD_RandiTrace");
+  }
 }
 
 void PatchFunctions(Core::System& system)

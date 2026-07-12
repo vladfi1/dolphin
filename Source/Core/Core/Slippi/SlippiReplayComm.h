@@ -32,6 +32,8 @@ public:
     bool is_real_time_mode;
     bool should_resync;                   // If true, logic will attempt to resync games
     std::string rollback_display_method;  // off, normal, visible
+    bool block_on_frame;                  // If true, block playback on each frame until acked
+    std::string engine_dump_path;
     std::string command_id;
     std::queue<WatchSettings> queue;
   } CommSettings;

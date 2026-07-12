@@ -320,6 +320,9 @@ int main(int argc, char* argv[])
   {
     SConfig::GetSlippiConfig().slippi_input = "Slippi/playback.txt";
   }
+
+  if (options.is_set("slippi-step"))
+    SConfig::GetSlippiConfig().slippi_playback_step = true;
 #endif
 
   if (save_state_path && !game_specified)

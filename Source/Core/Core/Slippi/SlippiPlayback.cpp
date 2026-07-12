@@ -1,5 +1,7 @@
+#include <chrono>
 #include <memory>
 #include <mutex>
+#include <thread>
 
 #ifdef _WIN32
 #include <share.h>
@@ -95,12 +97,60 @@ void SlippiPlaybackStatus::prepareSlippiPlayback(s32& frame_idx)
   if (should_run_threads && ((current_playback_frame + 122) % FRAME_INTERVAL == 0))
     cond_var.notify_one();
 
+  // In continuous playback, optionally throttle to real-time so external probes can capture every
+  // frame.
+  if (in_slippi_playback && !SConfig::GetSlippiConfig().slippi_playback_step && g_replay_comm)
+  {
+    auto settings = g_replay_comm->getSettings();
+    if (settings.is_real_time_mode)
+    {
+      static s32 throttle_start_frame = INT_MIN;
+      static s32 throttle_last_frame = INT_MIN;
+      static auto throttle_start_time = std::chrono::steady_clock::now();
+      if (throttle_start_frame == INT_MIN || frame_idx < throttle_last_frame)
+      {
+        throttle_start_frame = frame_idx;
+        throttle_last_frame = frame_idx;
+        throttle_start_time = std::chrono::steady_clock::now();
+      }
+
+      auto now = std::chrono::steady_clock::now();
+      double elapsed_ms = std::chrono::duration<double, std::milli>(now - throttle_start_time).count();
+      double target_ms = (frame_idx - throttle_start_frame) * (1000.0 / 60.0);
+      if (target_ms > elapsed_ms)
+      {
+        auto sleep_ms = target_ms - elapsed_ms;
+        if (sleep_ms > 0.0)
+          std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(sleep_ms));
+      }
+      throttle_last_frame = frame_idx;
+    }
+  }
+
+  // In step mode, pause playback whenever no explicit target is set.
+  if (SConfig::GetSlippiConfig().slippi_playback_step && in_slippi_playback &&
+      target_frame_num == INT_MAX)
+  {
+    auto& system = Core::System::GetInstance();
+    if (Core::GetState(system) != Core::State::Paused)
+      Core::SetState(system, Core::State::Paused);
+  }
+
   // TODO: figure out why sometimes playback frame increments past target_frame_num
   if (in_slippi_playback && frame_idx >= target_frame_num)
   {
     INFO_LOG_FMT(SLIPPI, "Reached frame {}. Target was {}. Unblocking", frame_idx,
                  target_frame_num);
     cv_waiting_for_target_frame.notify_one();
+
+    // In step mode, pause immediately on the target frame to avoid overshooting.
+    if (SConfig::GetSlippiConfig().slippi_playback_step)
+    {
+      target_frame_num = INT_MAX;
+      auto& system = Core::System::GetInstance();
+      if (Core::GetState(system) != Core::State::Paused)
+        Core::SetState(system, Core::State::Paused);
+    }
   }
 }
 
@@ -124,6 +174,13 @@ void SlippiPlaybackStatus::resetPlayback()
   is_soft_FFW = false;
   target_frame_num = INT_MAX;
   in_slippi_playback = false;
+  {
+    std::lock_guard<std::mutex> lock(m_block_mtx);
+    block_on_frame = false;
+    blocked_frame = INT_MIN;
+    last_ack_frame = INT_MIN;
+    m_block_cv.notify_all();
+  }
 }
 
 void SlippiPlaybackStatus::processInitialState(Core::System& system)
@@ -296,6 +353,45 @@ void SlippiPlaybackStatus::setHardFFW(bool enable)
   }
 
   is_hard_FFW = enable;
+}
+
+bool SlippiPlaybackStatus::waitForTargetFrame(s32 target, int timeout_ms)
+{
+  std::unique_lock<std::mutex> lock(mtx);
+  return cv_waiting_for_target_frame.wait_for(
+      lock, std::chrono::milliseconds(timeout_ms),
+      [this, target] { return current_playback_frame >= target; });
+}
+
+void SlippiPlaybackStatus::setBlockOnFrame(bool enable)
+{
+  std::lock_guard<std::mutex> lock(m_block_mtx);
+  block_on_frame = enable;
+  if (!enable)
+  {
+    blocked_frame = INT_MIN;
+    m_block_cv.notify_all();
+  }
+}
+
+void SlippiPlaybackStatus::waitOnFrame(s32 frame_idx)
+{
+  std::unique_lock<std::mutex> lock(m_block_mtx);
+  if (!block_on_frame)
+    return;
+  blocked_frame = frame_idx;
+  if (last_ack_frame >= frame_idx)
+    return;
+  m_block_cv.wait(lock,
+                  [this, frame_idx] { return !block_on_frame || last_ack_frame >= frame_idx; });
+}
+
+void SlippiPlaybackStatus::acknowledgeFrame(s32 frame_idx)
+{
+  std::lock_guard<std::mutex> lock(m_block_mtx);
+  if (frame_idx > last_ack_frame)
+    last_ack_frame = frame_idx;
+  m_block_cv.notify_all();
 }
 
 void SlippiPlaybackStatus::loadState(Core::System& system, s32 closest_state_frame)

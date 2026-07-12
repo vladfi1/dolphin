@@ -3,7 +3,12 @@
 // Refer to the license.txt file included.
 
 #include <algorithm>
+#include <chrono>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
 #include <semver/include/semver200.h>
+#include <thread>
 #include <utility>  // std::move
 
 #include "Common/CommonPaths.h"
@@ -23,6 +28,7 @@
 #include "Core/CoreTiming.h"
 #include "Core/Debugger/Debugger_SymbolMap.h"
 #include "Core/GeckoCode.h"
+#include "Core/HW/CPU.h"
 #include "Core/HW/EXI/EXI_DeviceSlippi.h"
 #include "Core/HW/Memmap.h"
 #include "Core/HW/SystemTimers.h"
@@ -52,6 +58,91 @@
 extern std::unique_ptr<SlippiPlaybackStatus> g_playback_status;
 extern std::unique_ptr<SlippiReplayComm> g_replay_comm;
 bool g_need_input_for_frame;
+
+namespace
+{
+// Swap the CPU into interpreter mode for a window of playback frames so the Interpreter.cpp
+// MSL_* event probes can observe engine execution, and back to JIT outside the window. Gated by
+// the MSL_PROBE_INTERPRETER_FRAME_START/END env vars; fully inert when unset.
+void MaybeSetProbeInterpreterModeForFrame(s32 frame)
+{
+  static bool initialized = false;
+  static bool enabled = false;
+  static bool active = false;
+  static s32 frame_start = 0;
+  static s32 frame_end = -1;
+  if (!initialized)
+  {
+    initialized = true;
+    const char* start = std::getenv("MSL_PROBE_INTERPRETER_FRAME_START");
+    const char* end = std::getenv("MSL_PROBE_INTERPRETER_FRAME_END");
+    if (start != nullptr && start[0] != '\0' && end != nullptr && end[0] != '\0')
+    {
+      frame_start = std::atoi(start);
+      frame_end = std::atoi(end);
+      enabled = frame_start <= frame_end;
+    }
+  }
+  if (!enabled)
+    return;
+
+  const bool should_interpret = frame >= frame_start && frame <= frame_end;
+  if (should_interpret == active)
+    return;
+
+  active = should_interpret;
+  auto& system = Core::System::GetInstance();
+  system.GetPowerPC().SetMode(active ? PowerPC::CoreMode::Interpreter : PowerPC::CoreMode::JIT);
+  system.GetCoreTiming().ForceExceptionCheck(0);
+  system.GetCPU().Break();
+  std::thread([&system] {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    Core::SetState(system, Core::State::Running);
+  }).detach();
+  std::cerr << "[MSL_PROBE_CPU_MODE] frame=" << frame
+            << " mode=" << (active ? "interpreter" : "jit") << " window=" << frame_start << ".."
+            << frame_end << "\n";
+}
+
+// Append a JSON line per EXI command to MSL_PROBE_COMMAND_TRACE_PATH (bounded by
+// MSL_PROBE_COMMAND_TRACE_LIMIT, default 256) for debugging playback command flow.
+void MaybeTraceProbeCommand(u8 command, const u8* payload, u32 payload_len)
+{
+  static bool initialized = false;
+  static bool enabled = false;
+  static int remaining = 0;
+  static std::ofstream out;
+  if (!initialized)
+  {
+    initialized = true;
+    const char* path = std::getenv("MSL_PROBE_COMMAND_TRACE_PATH");
+    if (path != nullptr && path[0] != '\0')
+    {
+      out.open(path, std::ios::out | std::ios::app);
+      enabled = out.good();
+    }
+    const char* limit = std::getenv("MSL_PROBE_COMMAND_TRACE_LIMIT");
+    remaining = (limit != nullptr && limit[0] != '\0') ? std::atoi(limit) : 256;
+    if (remaining < 0)
+      remaining = 0;
+  }
+  if (!enabled || remaining <= 0)
+    return;
+
+  s32 payload_frame = 0x7FFFFFFF;
+  if (payload_len >= 4)
+    payload_frame = payload[0] << 24 | payload[1] << 16 | payload[2] << 8 | payload[3];
+  out << "{\"command\":" << static_cast<int>(command) << ",\"payload_len\":" << payload_len
+      << ",\"payload_frame\":" << payload_frame;
+  if (g_playback_status)
+  {
+    out << ",\"current_playback_frame\":" << g_playback_status->current_playback_frame
+        << ",\"latest_frame\":" << g_playback_status->last_frame;
+  }
+  out << "}\n";
+  remaining--;
+}
+}  // namespace
 
 #ifdef LOCAL_TESTING
 bool is_local_connected = false;
@@ -193,6 +284,12 @@ CEXISlippi::CEXISlippi(Core::System& system, const std::string current_file_name
 CEXISlippi::~CEXISlippi()
 {
   u8 empty[1];
+
+  if (engine_dump_writer)
+  {
+    engine_dump_writer->Finalize();
+    engine_dump_writer.reset();
+  }
 
   // Closes file gracefully to prevent file corruption when emulation
   // suddenly stops. This would happen often on netplay when the opponent
@@ -964,6 +1061,7 @@ void CEXISlippi::prepareFrameData(u8* payload)
   }
 
   auto comm_settings = g_replay_comm->getSettings();
+  g_playback_status->setBlockOnFrame(comm_settings.block_on_frame);
   if (comm_settings.rollback_display_method == "normal")
   {
     auto next_frame = m_current_game->GetFrameAt(frame_seq_idx);
@@ -1003,7 +1101,19 @@ void CEXISlippi::prepareFrameData(u8* payload)
     g_playback_status->setHardFFW(false);
   }
 
-  bool should_FFW = g_playback_status->shouldFFWFrame(frame_idx);
+  // Never fast-forward while an engine dump is capturing its frame window or while an external
+  // client is stepping playback frame-by-frame; both need every frame to actually be played.
+  bool dump_active = engine_dump_writer && engine_dump_writer->IsEnabled();
+  bool dump_capturing_frame = dump_active && frame_idx >= watch_settings.start_frame &&
+                              frame_idx <= watch_settings.end_frame;
+  if (comm_settings.block_on_frame || dump_capturing_frame)
+  {
+    g_playback_status->is_soft_FFW = false;
+    g_playback_status->setHardFFW(false);
+  }
+  bool should_FFW = (comm_settings.block_on_frame || dump_capturing_frame) ?
+                        false :
+                        g_playback_status->shouldFFWFrame(frame_idx);
   u8 request_result_code = should_FFW ? FRAME_RESP_FASTFORWARD : FRAME_RESP_CONTINUE;
   if (!is_frame_ready)
   {
@@ -1076,7 +1186,16 @@ void CEXISlippi::prepareFrameData(u8* payload)
   // TODO: maybe handle other modes too?
   if (comm_settings.mode == "normal" || comm_settings.mode == "queue")
   {
+    MaybeSetProbeInterpreterModeForFrame(frame->frame);
     g_playback_status->prepareSlippiPlayback(frame->frame);
+    if (comm_settings.block_on_frame)
+    {
+      g_playback_status->waitOnFrame(frame->frame);
+    }
+    if (engine_dump_writer && engine_dump_writer->IsEnabled())
+    {
+      engine_dump_writer->CaptureFrame(frame->frame, frame);
+    }
   }
 
   // Push RB code
@@ -1131,6 +1250,12 @@ void CEXISlippi::prepareIsFileReady()
 {
   m_read_queue.clear();
 
+  if (engine_dump_writer)
+  {
+    engine_dump_writer->Finalize();
+    engine_dump_writer.reset();
+  }
+
   auto is_new_replay = g_replay_comm->isNewReplay();
   if (!is_new_replay)
   {
@@ -1155,6 +1280,23 @@ void CEXISlippi::prepareIsFileReady()
 
   // Clear playback control related vars
   g_playback_status->resetPlayback();
+
+  auto replay_comm_settings = g_replay_comm->getSettings();
+  if (!replay_comm_settings.engine_dump_path.empty())
+  {
+    int end_frame = g_replay_comm->current.end_frame;
+    int latest_frame = m_current_game->GetLatestIndex();
+    if (end_frame == INT_MAX || end_frame > latest_frame)
+      end_frame = latest_frame;
+    engine_dump_writer = std::make_unique<EngineDumpWriter>(
+        replay_comm_settings.engine_dump_path, g_replay_comm->current.start_frame, end_frame);
+    if (engine_dump_writer)
+    {
+      auto settings = m_current_game->GetSettings();
+      if (settings)
+        engine_dump_writer->SetGameSettings(*settings);
+    }
+  }
 
   // Start the playback!
   m_read_queue.push_back(1);
@@ -3287,6 +3429,7 @@ void CEXISlippi::DMAWrite(u32 _uAddr, u32 _uSize)
     }
 
     u32 payload_len = payload_sizes[byte];
+    MaybeTraceProbeCommand(byte, &mem_ptr[buf_loc + 1], payload_len);
     switch (byte)
     {
     case CMD_RECEIVE_GAME_END:

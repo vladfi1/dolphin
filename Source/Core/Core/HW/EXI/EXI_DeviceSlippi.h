@@ -8,6 +8,7 @@
 #include "Common/FileUtil.h"
 #include "Common/IOFile.h"
 #include "Common/SPSCQueue.h"
+#include "Core/Slippi/EngineDumpWriter.h"
 #include "Core/Slippi/SlippiDirectCodes.h"
 #include "Core/Slippi/SlippiExiTypes.h"
 #include "Core/Slippi/SlippiGame.h"
@@ -343,6 +344,7 @@ private:
   std::unique_ptr<SlippiMatchmaking> matchmaking;
   std::unique_ptr<SlippiDirectCodes> direct_codes;
   std::unique_ptr<SlippiDirectCodes> teams_codes;
+  std::unique_ptr<EngineDumpWriter> engine_dump_writer;
 
   std::map<s32, std::unique_ptr<SlippiSavestate>> active_savestates;
   std::deque<std::unique_ptr<SlippiSavestate>> available_savestates;

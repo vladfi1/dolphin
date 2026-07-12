@@ -176,6 +176,8 @@ void SlippiReplayComm::loadFile()
     m_comm_file_settings.is_real_time_mode = false;
     m_comm_file_settings.should_resync = true;
     m_comm_file_settings.rollback_display_method = "off";
+    m_comm_file_settings.block_on_frame = false;
+    m_comm_file_settings.engine_dump_path = "";
 
     if (res.is_string())
     {
@@ -207,6 +209,8 @@ void SlippiReplayComm::loadFile()
   m_comm_file_settings.is_real_time_mode = res.value("isRealTimeMode", false);
   m_comm_file_settings.should_resync = res.value("shouldResync", true);
   m_comm_file_settings.rollback_display_method = res.value("rollbackDisplayMethod", "off");
+  m_comm_file_settings.block_on_frame = res.value("blockOnFrame", false);
+  m_comm_file_settings.engine_dump_path = res.value("engineDumpPath", "");
 
   if (m_comm_file_settings.mode == "queue")
   {

@@ -133,6 +133,9 @@ std::unique_ptr<optparse::OptionParser> CreateParser(ParserOptions options)
   parser->add_option("--hide-seekbar")
       .action("store_true")
       .help("Disable and hide seekbar during playback");
+  parser->add_option("--slippi-step")
+      .action("store_true")
+      .help("Pause playback and require external step commands");
 #endif
 
   return parser;

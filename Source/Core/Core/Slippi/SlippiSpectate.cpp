@@ -5,6 +5,9 @@
 #include "Common/CommonTypes.h"
 #include "Common/Logging/Log.h"
 #include "Common/Version.h"
+#include "Core/Core.h"
+#include "Core/Slippi/SlippiPlayback.h"
+#include "Core/System.h"
 
 // Networking
 #ifdef _WIN32
@@ -13,6 +16,8 @@
 #else
 #include <errno.h>
 #endif
+
+extern std::unique_ptr<SlippiPlaybackStatus> g_playback_status;
 
 inline bool isSpectatorEnabled()
 {
@@ -197,6 +202,68 @@ void SlippiSpectateServer::handleMessage(u8* buffer, u32 length, u16 peer_id)
     // Check what type of message this is
     if (!json_message["type"].is_string())
     {
+      return;
+    }
+
+    if (json_message["type"] == "playback_step")
+    {
+      int frames = 1;
+      int target_frame = INT_MIN;
+      if (json_message.find("frames") != json_message.end() &&
+          json_message["frames"].is_number_integer())
+        frames = json_message["frames"];
+      if (json_message.find("targetFrame") != json_message.end() &&
+          json_message["targetFrame"].is_number_integer())
+        target_frame = json_message["targetFrame"];
+      if (frames < 1)
+        frames = 1;
+
+      Core::QueueHostJob([frames, target_frame](Core::System& system) {
+        if (!g_playback_status)
+          return;
+        int cur = g_playback_status->current_playback_frame;
+        int tgt = target_frame;
+        if (tgt == INT_MIN && cur != INT_MIN)
+          tgt = cur + frames;
+        if (tgt != INT_MIN)
+          g_playback_status->target_frame_num = tgt;
+        if (Core::GetState(system) == Core::State::Paused)
+          Core::SetState(system, Core::State::Running);
+      });
+      // Wait for the target frame, then send an ack back to the client.
+      bool ok = false;
+      s32 cur_frame = INT_MIN;
+      s32 tgt_frame = INT_MIN;
+      if (g_playback_status)
+      {
+        cur_frame = g_playback_status->current_playback_frame;
+        tgt_frame = target_frame;
+        if (tgt_frame == INT_MIN && cur_frame != INT_MIN)
+          tgt_frame = cur_frame + frames;
+        if (tgt_frame != INT_MIN)
+          ok = g_playback_status->waitForTargetFrame(tgt_frame, 50);
+        cur_frame = g_playback_status->current_playback_frame;
+      }
+      json ack;
+      ack["type"] = "playback_step_ack";
+      ack["ok"] = ok;
+      ack["targetFrame"] = tgt_frame;
+      ack["currentFrame"] = cur_frame;
+      std::string ack_str = ack.dump();
+      ENetPacket* packet =
+          enet_packet_create(ack_str.data(), ack_str.size(), ENET_PACKET_FLAG_RELIABLE);
+      enet_peer_send(m_sockets[peer_id]->m_peer, 0, packet);
+      return;
+    }
+
+    if (json_message["type"] == "frame_ack")
+    {
+      if (g_playback_status && json_message.find("frame") != json_message.end() &&
+          json_message["frame"].is_number_integer())
+      {
+        int frame = json_message["frame"];
+        g_playback_status->acknowledgeFrame(frame);
+      }
       return;
     }
 

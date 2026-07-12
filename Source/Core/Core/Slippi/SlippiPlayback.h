@@ -1,8 +1,10 @@
 #pragma once
 
 #include <climits>
+#include <condition_variable>
 #include <cstring>
 #include <future>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -33,14 +35,23 @@ public:
   s32 current_playback_frame = INT_MIN;
   s32 target_frame_num = INT_MAX;
   s32 last_frame = Slippi::PLAYBACK_FIRST_SAVE;
+  bool block_on_frame = false;
+  s32 blocked_frame = INT_MIN;
+  s32 last_ack_frame = INT_MIN;
 
   std::thread m_savestate_thread;
+  std::mutex m_block_mtx;
+  std::condition_variable m_block_cv;
 
   void startThreads();
   void resetPlayback(void);
   bool shouldFFWFrame(s32 frame_idx) const;
   void prepareSlippiPlayback(s32& frame_idx);
   void setHardFFW(bool enable);
+  bool waitForTargetFrame(s32 target, int timeout_ms);
+  void setBlockOnFrame(bool enable);
+  void waitOnFrame(s32 frame_idx);
+  void acknowledgeFrame(s32 frame_idx);
   std::unordered_map<u32, bool> getDenylist();
   std::vector<u8> getLegacyCodelist();
   void seekToFrame(Core::System& system);
