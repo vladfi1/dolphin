@@ -6,6 +6,8 @@ DATA_SYS_PATH="./Data/Sys"
 
 CMAKE_FLAGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
 CMAKE_FLAGS+=' -DLINUX_LOCAL_DEV=true -DENABLE_HEADLESS=true -DENABLE_QT=false'
+# Homebrew fmt (>= 11) is too new for this codebase; always use the bundled one.
+CMAKE_FLAGS+=' -DUSE_SYSTEM_FMT=no'
 
 # For some reason the system xxhash library doesn't get properly linked,
 # at least on my M1. The clang command gets -lxxhash, but probably needs
