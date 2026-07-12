@@ -2006,6 +2006,76 @@ void MaybeCaptureProbePcTrace(u32 pc)
   remaining--;
 }
 
+// Trace calls into the lb JObj SRT copy/blend helpers (fighter anim blending). Logs entry
+// registers so offline analysis can attribute which helper wrote a given JObj's local SRT and
+// from which source joint. Enable with MSL_PROBE_JOBJ_BLEND_PATH (+ FRAME_START/END, LIMIT).
+void MaybeCaptureJObjBlendTrace(u32 pc)
+{
+  static bool initialized = false;
+  static bool enabled = false;
+  static s32 frame_start = -2147483647;
+  static s32 frame_end = 2147483647;
+  static int remaining = 0;
+  static std::ofstream out;
+  if (!initialized)
+  {
+    initialized = true;
+    const char* path = std::getenv("MSL_PROBE_JOBJ_BLEND_PATH");
+    if (path != nullptr && path[0] != '\0')
+    {
+      out.open(path, std::ios::out | std::ios::app);
+      enabled = out.good();
+    }
+    const char* start = std::getenv("MSL_PROBE_JOBJ_BLEND_FRAME_START");
+    if (start != nullptr && start[0] != '\0')
+      frame_start = std::atoi(start);
+    const char* end = std::getenv("MSL_PROBE_JOBJ_BLEND_FRAME_END");
+    if (end != nullptr && end[0] != '\0')
+      frame_end = std::atoi(end);
+    const char* limit = std::getenv("MSL_PROBE_JOBJ_BLEND_LIMIT");
+    remaining = (limit != nullptr && limit[0] != '\0') ? std::atoi(limit) : 100000;
+    if (remaining < 0)
+      remaining = 0;
+  }
+  if (!enabled || remaining <= 0)
+    return;
+  const char* fn = nullptr;
+  switch (pc)
+  {
+  case 0x8000B4FCu:
+    fn = "lb_8000B4FC";
+    break;
+  case 0x8000B5DCu:
+    fn = "lb_8000B5DC";
+    break;
+  case 0x8000B6A4u:
+    fn = "lb_8000B6A4";
+    break;
+  case 0x8000B760u:
+    fn = "lb_8000B760";
+    break;
+  case 0x8000C490u:
+    fn = "lb_8000C490";
+    break;
+  case 0x8000C7BCu:
+    fn = "lbCopyJObjSRT";
+    break;
+  case 0x8000C868u:
+    fn = "lb_8000C868";
+    break;
+  default:
+    return;
+  }
+  const s32 frame = static_cast<s32>(ReadEventU32(MSL_FRAME_INDEX_PTR));
+  if (frame < frame_start || frame > frame_end)
+    return;
+  const auto& ppc = ProbePpc();
+  out << "{\"fn\":\"" << fn << "\",\"frame\":" << frame << ",\"lr\":" << ProbeLR()
+      << ",\"r3\":" << ppc.gpr[3] << ",\"r4\":" << ppc.gpr[4] << ",\"r5\":" << ppc.gpr[5]
+      << ",\"f1\":" << ppc.ps[1].PS0AsDouble() << ",\"f2\":" << ppc.ps[2].PS0AsDouble() << "}\n";
+  remaining--;
+}
+
 void MaybeCaptureThrowAttachProbe(u32 pc)
 {
   static bool initialized = false;
@@ -2851,6 +2921,7 @@ int Interpreter::SingleStepInner()
   MaybeCaptureDamageFallIasaProbe(m_ppc_state.pc);
   MaybeCaptureCollisionProbe(m_ppc_state.pc);
   MaybeCaptureProbePcTrace(m_ppc_state.pc);
+  MaybeCaptureJObjBlendTrace(m_ppc_state.pc);
   MaybeCaptureThrowAttachProbe(m_ppc_state.pc);
   MaybeCaptureThrowReleaseProbe(m_ppc_state.pc);
   MaybeCaptureThrowLaserEvents(m_ppc_state.pc);
