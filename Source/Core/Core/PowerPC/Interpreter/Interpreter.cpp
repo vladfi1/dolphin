@@ -1969,7 +1969,40 @@ void MaybeCaptureProbePcTrace(u32 pc)
   const s32 frame = static_cast<s32>(ReadEventU32(MSL_FRAME_INDEX_PTR));
   if (frame < frame_start || frame > frame_end)
     return;
-  out << "{\"pc\":" << pc << ",\"frame\":" << frame << ",\"lr\":" << ProbeLR() << "}\n";
+  out << "{\"pc\":" << pc << ",\"frame\":" << frame << ",\"lr\":" << ProbeLR();
+  if (pc == pc_start)
+  {
+    // Entry-row context: r3/r4 cover the ftAction handler convention (r3 = fighter gobj,
+    // r4 = script context whose +0x8 is the subaction event cursor).
+    const u32 r3 = ProbePpc().gpr[3];
+    const u32 r4 = ProbePpc().gpr[4];
+    out << ",\"r3\":" << r3 << ",\"r4\":" << r4;
+    out << ",\"port\":" << OwnerPortFromGobj(r3);
+    if (r3 >= 0x80000000u && r3 < 0x81800000u)
+    {
+      const u32 fp = ReadEventU32(r3 + MSL_GOBJ_USER_DATA_OFF);
+      out << ",\"fp\":" << fp;
+      if (fp >= 0x80000000u && fp < 0x81800000u)
+        out << ",\"x2218\":" << static_cast<u32>(ReadEventU8(fp + 0x2218));
+    }
+    if (r4 >= 0x80000000u && r4 < 0x81800000u)
+    {
+      const u32 script_pc = ReadEventU32(r4 + 0x8);
+      out << ",\"script_pc\":" << script_pc;
+      if (script_pc >= 0x80000100u && script_pc < 0x817FFF00u)
+      {
+        out << ",\"script_bytes\":[";
+        for (u32 i = 0; i < 48; i++)
+        {
+          if (i)
+            out << ",";
+          out << ReadEventU32(script_pc - 0x60 + i * 4);
+        }
+        out << "]";
+      }
+    }
+  }
+  out << "}\n";
   remaining--;
 }
 
