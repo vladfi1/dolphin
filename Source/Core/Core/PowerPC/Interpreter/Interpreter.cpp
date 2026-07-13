@@ -2072,7 +2072,29 @@ void MaybeCaptureJObjBlendTrace(u32 pc)
   const auto& ppc = ProbePpc();
   out << "{\"fn\":\"" << fn << "\",\"frame\":" << frame << ",\"lr\":" << ProbeLR()
       << ",\"r3\":" << ppc.gpr[3] << ",\"r4\":" << ppc.gpr[4] << ",\"r5\":" << ppc.gpr[5]
-      << ",\"f1\":" << ppc.ps[1].PS0AsDouble() << ",\"f2\":" << ppc.ps[2].PS0AsDouble() << "}\n";
+      << ",\"f1\":" << ppc.ps[1].PS0AsDouble() << ",\"f2\":" << ppc.ps[2].PS0AsDouble();
+  // Local SRT of each jobj argument (dest, src_a, src_b) so blend inputs/outputs can be
+  // compared against generated pose tables offline.
+  const char* names[3] = {"jobj_r3", "jobj_r4", "jobj_r5"};
+  for (int i = 0; i < 3; i++)
+  {
+    const u32 jobj = ppc.gpr[3 + i];
+    out << ",\"" << names[i] << "\":{\"ptr\":" << jobj;
+    if (jobj != 0)
+    {
+      out << ",\"parent\":" << ReadEventU32(jobj + 0x0C);
+      out << ",\"flags\":" << ReadEventU32(jobj + 0x14);
+      DumpEventVecBits(out, "rotate_xyz_bits", jobj + 0x1C);
+      out << ",\"rotate_w_bits\":" << ReadEventU32(jobj + 0x28);
+      DumpEventVecBits(out, "scale_bits", jobj + 0x2C);
+      DumpEventVecBits(out, "translate_bits", jobj + 0x38);
+      const u32 aobj = ReadEventU32(jobj + 0x7C);
+      out << ",\"aobj_frame_bits\":" << (aobj != 0 ? ReadEventU32(aobj + 0x04) : 0u);
+      out << ",\"aobj_end_bits\":" << (aobj != 0 ? ReadEventU32(aobj + 0x0C) : 0u);
+    }
+    out << "}";
+  }
+  out << "}\n";
   remaining--;
 }
 
