@@ -2767,6 +2767,15 @@ void DumpFallFloorGObjBrief(std::ofstream& out, const char* name, u32 gobj)
     out << ",\"ledge_cooldown\":" << ReadEventU32(fp + 0x2064);
     out << ",\"state_flags_2218\":" << static_cast<u32>(ReadEventU8(fp + MSL_FIGHTER_STATE_FLAGS_2218_OFF));
     out << ",\"state_flags_2224\":" << static_cast<u32>(ReadEventU8(fp + 0x2224));
+    // Live anim timebase: x894 float action-state frame, x8A4 blend frames remaining,
+    // x8A8 blended-anim frame, x89C frame speed mul.
+    out << ",\"x894_frame_bits\":" << ReadEventU32(fp + 0x894);
+    out << ",\"x89c_speed_bits\":" << ReadEventU32(fp + 0x89C);
+    out << ",\"x8a4_blend_bits\":" << ReadEventU32(fp + 0x8A4);
+    out << ",\"x8a8_animframe_bits\":" << ReadEventU32(fp + 0x8A8);
+    // Motion vars: mv.co.fall.smid / mv.co.fall.x4 (Fall-family directional blend).
+    out << ",\"mv_2340_smid\":" << ReadEventU32(fp + 0x2340);
+    out << ",\"mv_2344_x4_bits\":" << ReadEventU32(fp + 0x2344);
   }
   out << "}";
 }
